@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>OAU CBT Simulator - Secure Mode</title>
+    <style>
+      :root {
+        --primary: #e11d48;
+        --bg: #0f172a;
+        --card: #1e293b;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: var(--bg);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        margin: 0;
+        user-select: none;
+      }
+      .container {
+        width: 95%;
+        max-width: 900px;
+        background: var(--card);
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+      }
+
+      /* Setup Screen */
+      #setupScreen {
+        text-align: center;
+        animation: fadeIn 0.5s;
+      }
+      .input-group {
+        margin: 20px 0;
+        text-align: left;
+        max-width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      label {
+        font-size: 0.9rem;
+        color: #94a3b8;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        border-radius: 6px;
+        border: 2px solid #334155;
+        margin-top: 8px;
+        font-size: 16px;
+        background: #0f172a;
+        color: white;
+        outline: none;
+      }
+      input:focus {
+        border-color: var(--primary);
+      }
+      .limit-note {
+        font-size: 0.75rem;
+        color: #e11d48;
+        margin-top: 4px;
+        display: block;
+      }
+
+      /* Exam Elements */
+      #examArea { display: none; }
+      h2 { text-align: center; color: var(--primary); margin-top: 0; }
+      #timer {
+        text-align: center;
+        font-size: 26px;
+        margin: 15px;
+        color: #22c55e;
+        font-weight: bold;
+        font-family: monospace;
+      }
+
+      .option {
+        display: block;
+        background: var(--bg);
+        margin: 10px 0;
+        padding: 12px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: 0.2s;
+      }
+      .selected { background: #334155; border-color: var(--primary); }
+      .correct { background: #064e3b !important; border-color: #22c55e !important; color: #adfaad; }
+      .wrong { background: #7f1d1d !important; border-color: #ef4444 !important; color: #fca5a5; }
+
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+        margin: 20px 0;
+        max-height: 150px;
+        overflow-y: auto;
+        padding: 5px;
+      }
+      .palette button {
+        padding: 8px 2px;
+        border: none;
+        cursor: pointer;
+        background: #475569;
+        color: white;
+        border-radius: 4px;
+      }
+      .palette-correct { background: #22c55e !important; }
+      .palette-wrong { background: #e11d48 !important; }
+      .current { background: var(--primary) !important; outline: 2px solid white; }
+
+      .controls { display: flex; gap: 10px; margin-top: 20px; }
+      button.btn {
+        flex: 1;
+        padding: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        text-transform: uppercase;
+      }
+      .btn-start { background: #22c55e; width: 100%; }
+      .prev { background: #64748b; }
+      .next { background: #2563eb; }
+      .submit { background: var(--primary); }
+
+      #resultBanner {
+        display: none;
+        text-align: center;
+        background: #334155;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 2px solid #2563eb;
+      }
+
+      footer {
+        text-align: center;
+        padding: 20px 0;
+        margin-top: 40px;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        border-top: 1px solid #334155;
+        width: 100%;
+        max-width: 900px;
+      }
+      footer a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: bold;
+        transition: 0.3s;
+      }
+      footer a:hover {
+        color: #fb7185; /* A slightly lighter red for the hover effect */
+        text-decoration: underline;
+      }
+
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+  </head>
+  <body oncontextmenu="return false;">
+    <div class="container">
+      <div id="setupScreen">
+        <h2>EXAM CONFIGURATION</h2>
+        <p>Pool Size: <span id="poolSize">0</span> Questions</p>
+
+        <div class="input-group">
+          <label>Number of Questions:</label>
+          <input type="number" id="userQty" value="40" min="1" max="100" />
+          <span class="limit-note">* Maximum allowed: 100</span>
+        </div>
+
+        <div class="input-group">
+          <label>Time Limit (Minutes):</label>
+          <input type="number" id="userTime" value="60" min="1" max="60" />
+          <span class="limit-note">* Maximum allowed: 60</span>
+        </div>
+
+        <button class="btn btn-start" onclick="startExam()">
+          START EXAMINATION
+        </button>
+      </div>
+
+      <div id="examArea">
+        <h2 id="examTitle">OAU LIB 001 CBT</h2>
+        <div id="resultBanner">
+          <h1 id="scoreDisplay"></h1>
+          <p id="percentDisplay"></p>
+          <button class="btn next" onclick="location.reload()">
+            RETAKE NEW EXAM
+          </button>
+        </div>
+        <div id="timer">60:00</div>
+        <div id="palette" class="palette"></div>
+        <div id="questionBox"></div>
+        <div class="controls">
+          <button class="btn prev" onclick="prevQ()">PREVIOUS</button>
+          <button class="btn next" onclick="nextQ()">NEXT</button>
+          <button id="submitBtn" class="btn submit" onclick="submitExam()">
+            SUBMIT
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <footer>
+      <p>
+        &copy; <script>document.write(new Date().getFullYear())</script> OAU COS 101 CBT Simulator | 
+        Developed by <a href="https://www.linkedin.com/in/oreoluwapo-ajeyomi-55120834b/" target="_blank">OREOLUWAPO AJEYOMI</a>
+      </p>
+    </footer>
+    </footer>
+
+    <script>
+      const MAX_QS = 100;
+      const MAX_TIME = 60;
+
+      const QUESTION_POOL = [
+        
+  { q: "What is the course code for the Library Instruction Programme?", o: ["LIB 001", "LIB 101", "GNS 101", "LIB 002"], a: "LIB 001" },
+  { q: "How many credit units is the LIB 001 course?", o: ["1 Unit", "2 Units", "0 Unit", "3 Units"], a: "0 Unit" },
+  { q: "Which level of study is LIB 001 primarily designed for?", o: ["400 Level", "100 Level/Direct Entry", "200 Level only", "Postgraduate"], a: "100 Level/Direct Entry" },
+  { q: "What is the primary aim of the LIB 001 course?", o: ["To teach computer programming", "To introduce students to library processes and resources", "To teach history of OAU", "To provide financial aid"], a: "To introduce students to library processes and resources" },
+  { q: "Which of these is a criterion for evaluating information obtained from the library?", o: ["Color of the book cover", "Weight of the book", "Authenticity and Currency", "Number of pages"], a: "Authenticity and Currency" },
+  { q: "What is the pass mark for LIB 001 based on the grading scale?", o: ["50 and above", "45 and above", "40 and above", "70 and above"], a: "40 and above" },
+  { q: "How many marks is the Library Tour worth in the assessment?", o: ["5 marks", "10 marks", "15 marks", "20 marks"], a: "10 marks" },
+  { q: "What is the value of the final exam in the total grading?", o: ["40 marks", "50 marks", "60 marks", "70 marks"], a: "60 marks" },
+  { q: "Module 1 of the course focuses on:", o: ["Concept of Information", "The Library and Information Organisation", "Information Literacy", "Reference Sources"], a: "The Library and Information Organisation" },
+  { q: "Which module covers 'Legal and Ethical Issues of Information Use'?", o: ["Module 1", "Module 3", "Module 6", "Module 10"], a: "Module 6" },
+  { q: "What is the name of the main library at Obafemi Awolowo University?", o: ["Kenneth Dike Library", "Hezekiah Oluwasanmi Library", "Nimbe Adedipe Library", "Laz Otti Library"], a: "Hezekiah Oluwasanmi Library" },
+  { q: "According to George Eberhart (2010), a library is a collection of resources organized by:", o: ["Students", "Information professionals or experts", "Government officials", "Book sellers"], a: "Information professionals or experts" },
+  { q: "One of the main objectives of the university library is:", o: ["Sale of textbooks", "Conservation of knowledge", "Organizing student parties", "Printing currency"], a: "Conservation of knowledge" },
+  { q: "The orderly arrangement of items in classes according to common characteristics is:", o: ["Retrieval", "Classification", "Evaluation", "Archiving"], a: "Classification" },
+  { q: "Which classification scheme is used at the Hezekiah Oluwasanmi Library (HOL)?", o: ["Dewey Decimal Classification", "Universal Decimal Classification", "Library of Congress Classification", "Moys Classification"], a: "Library of Congress Classification" },
+  { q: "In the LCC scheme, what do letters represent?", o: ["Number of pages", "Main subject areas", "Price of the book", "Year of publication"], a: "Main subject areas" },
+  { q: "Which LCC letter is assigned to books in Science?", o: ["R", "S", "Q", "T"], a: "Q" },
+  { q: "Which LCC letter is assigned to Medicine?", o: ["Q", "R", "P", "Z"], a: "R" },
+  { q: "Where is the Classification Number (Call Mark) mostly written on a physical library book?", o: ["On the first page", "On the spine", "On the back cover", "On the title page"], a: "On the spine" },
+  { q: "In LCC, what does the letter 'A' stand for?", o: ["Agriculture", "General Works", "Arts", "Africa"], a: "General Works" },
+  { q: "Which class represents 'Social Sciences' in LCC?", o: ["G", "H", "J", "K"], a: "H" },
+  { q: "Which class represents 'Education' in LCC?", o: ["P", "L", "J", "Q"], a: "L" },
+  { q: "Which wing of the HOL houses books in Classes A-J?", o: ["North wing", "South wing", "East wing", "West wing"], a: "South wing" },
+  { q: "Which wing of the HOL houses books in Classes K-Z?", o: ["South wing", "North wing", "Central wing", "Basement"], a: "North wing" },
+  { q: "The 'Africana Special Collection' is a collection of:", o: ["Science fiction", "Rare books of primary interest to African Studies", "European maps", "American history"], a: "Rare books of primary interest to African Studies" },
+  { q: "Where are OAU staff publications and theses housed?", o: ["Reference Room", "Africana Special Collection", "Serials Section", "Circulation Desk"], a: "Africana Special Collection" },
+  { q: "The 'Document Collection' includes official publications of:", o: ["Only the US Government", "The Federal Government of Nigeria", "Private companies", "Student unions"], a: "The Federal Government of Nigeria" },
+  { q: "Which section houses dictionaries, encyclopedias, and atlases?", o: ["Serials Room", "Reference Room", "Africana Room", "Reserve Room"], a: "Reference Room" },
+  { q: "The 'Serials Collection' consists of:", o: ["Textbooks only", "Current and back files of journals", "Maps and charts", "Children's books"], a: "Current and back files of journals" },
+  { q: "Books added to the library stock and displayed for several days are called:", o: ["Rare books", "Recent Accessions", "Archival materials", "Reserved books"], a: "Recent Accessions" },
+  { q: "JSTOR and Ebscohost are examples of:", o: ["Print resources", "Online Databases", "Library furniture", "Physical catalogues"], a: "Online Databases" },
+  { q: "Which database is specific to African Theses and Dissertations?", o: ["Aluka", "DATAD", "Legalpedia", "Research4Life"], a: "DATAD" },
+  { q: "What does OPAC stand for?", o: ["Online Private Access Catalogue", "Online Public Access Catalogue", "Office of Public Academic Communications", "Online Primary Access Collection"], a: "Online Public Access Catalogue" },
+  { q: "The Institutional Repository (IR) is a database for:", o: ["Books bought from abroad", "Publications by OAU staff or students", "Daily newspapers", "International maps"], a: "Publications by OAU staff or students" },
+  { q: "Which LCC class is for 'Agriculture'?", o: ["R", "S", "T", "U"], a: "S" },
+  { q: "Which LCC class is for 'Technology'?", o: ["S", "T", "V", "Z"], a: "T" },
+  { q: "Information can be defined as data that has been:", o: ["Deleted", "Processed and is meaningful", "Randomly collected", "Hidden"], a: "Processed and is meaningful" },
+  { q: "For information to be relevant, it must be:", o: ["Old", "Concise and reliable", "Unorganized", "Secret"], a: "Concise and reliable" },
+  { q: "When evaluating a website, what is a very important factor?", o: ["The background color", "The date it was last updated", "The number of images", "The font style"], a: "The date it was last updated" },
+  { q: "What are the three levels of information sources?", o: ["Small, Medium, Large", "Primary, Secondary, Tertiary", "Local, National, International", "Digital, Print, Verbal"], a: "Primary, Secondary, Tertiary" },
+  { q: "Which of these is a primary source of information?", o: ["Textbook", "Encyclopedia", "Thesis or Original research", "Dictionary"], a: "Thesis or Original research" },
+  { q: "Information literacy transforms a student into:", o: ["A librarian", "A lifelong learner", "A teacher", "A bookseller"], a: "A lifelong learner" },
+  { q: "One objective of information literacy is to teach students how to:", o: ["Steal books", "Access information effectively and efficiently", "Avoid the library", "Print their own books"], a: "Access information effectively and efficiently" },
+  { q: "Which term describes literacy involving blogs, podcasts, and social networking?", o: ["Old Literacies", "New Literacies", "Formal Literacies", "Basic Literacies"], a: "New Literacies" },
+  { q: "Media literacy is primarily about being a:", o: ["Radio presenter", "Savvy consumer of media messages", "Professional photographer", "Social media influencer"], a: "Savvy consumer of media messages" },
+  { q: "A brief summary of the contents of a research work is known as:", o: ["Index", "Abstract", "Bibliography", "Preface"], a: "Abstract" },
+  { q: "A guide to the contents of any periodical is called an:", o: ["Abstract", "Index", "Appendix", "Glossary"], a: "Index" },
+  { q: "A systematic list of all published materials on a given subject or country is a:", o: ["Catalogue", "Bibliography", "Directory", "Almanac"], a: "Bibliography" },
+  { q: "Which search engine category includes LexisNexis and FindLaw?", o: ["Jobs", "Legal", "Maps", "Multimedia"], a: "Legal" },
+  { q: "Which reference material provides maps and geographical information?", o: ["Encyclopedia", "Atlas/Gazetteer", "Handbook", "Yearbook"], a: "Atlas/Gazetteer" },
+  { q: "What is a 'Citation'?", o: ["A fine", "A reference to a source of information", "A type of poem", "A library card"], a: "A reference to a source of information" },
+  { q: "Which of these is a reason for citing sources?", o: ["To make the paper longer", "To avoid plagiarism and give credit", "To confuse the reader", "To show wealth"], a: "To avoid plagiarism and give credit" },
+  { q: "Which LCC class is for 'Music'?", o: ["L", "M", "N", "Q"], a: "M" },
+  { q: "Which LCC class is for 'Fine Arts'?", o: ["M", "N", "P", "R"], a: "N" },
+  { q: "Where is the call mark found on a catalogue card?", o: ["Bottom right", "Top-left hand side corner", "In the middle", "At the back"], a: "Top-left hand side corner" },
+  { q: "LCC Class 'B' stands for:", o: ["Biology", "Philosophy, Psychology, Religion", "Business", "Books"], a: "Philosophy, Psychology, Religion" },
+  { q: "Current journals at HOL are kept in the:", o: ["Document room", "Display section of Serial room", "Reference room", "North wing"], a: "Display section of Serial room" },
+  { q: "Directory of Open Access Journals (DOAJ) provides:", o: ["Only book titles", "Essential academic links to journals", "Passwords", "Staff addresses"], a: "Essential academic links to journals" },
+  { q: "The HOL website can be accessed through:", o: ["www.google.com", "library.oauife.edu.ng", "www.facebook.com", "www.library.com"], a: "library.oauife.edu.ng" },
+  { q: "Which LCC class is for 'Language and Literature'?", o: ["N", "P", "Q", "R"], a: "P" },
+  { q: "Which LCC class is for 'General Bibliography'?", o: ["A", "Z", "L", "M"], a: "Z" },
+  { q: "Which LCC class is for 'Law'?", o: ["J", "K", "L", "M"], a: "K" },
+  { q: "Which LCC class is for 'Political Science'?", o: ["H", "J", "K", "L"], a: "J" },
+  { q: "Which LCC class is for 'Education'?", o: ["L", "M", "N", "P"], a: "L" },
+  { q: "Which LCC class is for 'Military Science'?", o: ["U", "V", "W", "X"], a: "U" },
+  { q: "Which LCC class is for 'Naval Science'?", o: ["U", "V", "W", "X"], a: "V" },
+  { q: "Which LCC class is for 'Auxiliary Sciences of History'?", o: ["B", "C", "D", "E"], a: "C" },
+  { q: "Which LCC class is for 'History of the Americas'?", o: ["D", "E-F", "G", "H"], a: "E-F" },
+  { q: "A 'secondary source' is defined as:", o: ["Original research", "Analysis or interpretation of primary data", "A raw document", "A first-hand account"], a: "Analysis or interpretation of primary data" },
+  { q: "Which of these is a secondary source?", o: ["Personal diary", "Journal article analyzing a study", "Raw lab notes", "Original photograph"], a: "Journal article analyzing a study" },
+  { q: "A 'tertiary source' serves as a:", o: ["Raw data point", "Pointer to primary and secondary sources", "Original research", "Personal memoir"], a: "Pointer to primary and secondary sources" },
+  { q: "Examples of tertiary sources include:", o: ["Letters", "Indexes and Encyclopedias", "Lab reports", "Interviews"], a: "Indexes and Encyclopedias" },
+  { q: "What is 'Media Literacy'?", o: ["Ability to read newspapers", "Understanding how media messages are constructed", "Owning a television", "Working for a news station"], a: "Understanding how media messages are constructed" },
+  { q: "What is 'Visual Literacy'?", o: ["Being able to see", "Interpreting and creating meaning from images", "Taking photographs", "Drawing well"], a: "Interpreting and creating meaning from images" },
+  { q: "The concept of 'Digital Literacy' includes:", o: ["Only using Microsoft Word", "Using technology to find, evaluate, and communicate information", "Buying a laptop", "Playing video games"], a: "Using technology to find, evaluate, and communicate information" },
+  { q: "A 'General Index' covers:", o: ["A specific topic", "A wide range of periodicals and subjects", "Only authors", "Only one book"], a: "A wide range of periodicals and subjects" },
+  { q: "A 'Subject Index' is used to find articles by:", o: ["Author name", "Title of article", "Topic or theme", "Year of publication"], a: "Topic or theme" },
+  { q: "An 'Author Index' lists entries by:", o: ["Name of the person who wrote it", "Name of the publisher", "Subject matter", "City of publication"], a: "Name of the person who wrote it" },
+  { q: "What is an 'Almanac'?", o: ["A dictionary of names", "An annual publication with statistics and facts", "A map book", "A list of definitions"], a: "An annual publication with statistics and facts" },
+  { q: "A 'Gazetteer' is a:", o: ["Type of dictionary for places", "Scientific journal", "Newspaper", "Legal code"], a: "Type of dictionary for places" },
+  { q: "What does a 'Directory' provide?", o: ["Definitions", "Contact info for people or organizations", "Historical maps", "Thematic essays"], a: "Contact info for people or organizations" },
+  { q: "A 'Handbook' is a reference book that:", o: ["Is very large", "Provides concise info on a specific subject", "Lists all students", "Is for children"], a: "Provides concise info on a specific subject" },
+  { q: "Which section of a report usually follows the Title Page?", o: ["Conclusion", "Abstract or Executive Summary", "Bibliography", "Methodology"], a: "Abstract or Executive Summary" },
+  { q: "The 'Methodology' section of a report explains:", o: ["The results", "How the research was conducted", "The author's bio", "The cost of research"], a: "How the research was conducted" },
+  { q: "The 'Recommendations' section of a report suggests:", o: ["What books to buy", "Actions to be taken based on findings", "Who to hire", "Future weather patterns"], a: "Actions to be taken based on findings" },
+  { q: "What is 'Plagiarism'?", o: ["Citing a source correctly", "Using someone else's work without credit", "Writing a long report", "Reading a book"], a: "Using someone else's work without credit" },
+  { q: "In-text citations are usually found:", o: ["At the end of the paper", "In the body of the text", "On the title page", "In the abstract"], a: "In the body of the text" },
+  { q: "Which of these is a common citation style?", o: ["APA", "MLA", "Chicago", "All of the above"], a: "All of the above" },
+  { q: "What is the primary purpose of the 'References' page?", o: ["To show the student's name", "To list all sources used in the work", "To provide a summary", "To list the table of contents"], a: "To list all sources used in the work" },
+  { q: "When citing a website, you should include the:", o: ["URL and Date of access", "Computer model used", "Name of the ISP", "Internet speed"], a: "URL and Date of access" },
+  { q: "A 'Yearbook' provides:", o: ["A calendar", "Summary of events and progress for a specific year", "Photos of students", "Predictions for the future"], a: "Summary of events and progress for a specific year" },
+  { q: "The 'Appendix' of a report contains:", o: ["The main argument", "Supplementary materials like charts or raw data", "The title", "The abstract"], a: "Supplementary materials like charts or raw data" },
+  { q: "A 'Meta-search engine' is unique because it:", o: ["Has its own database", "Queries multiple search engines at once", "Only searches for images", "Is only for social media"], a: "Queries multiple search engines at once" },
+  { q: "Which of these is a Meta-search engine?", o: ["Google", "Dogpile", "Bing", "Yahoo"], a: "Dogpile" },
+  { q: "Which search engine is best for finding jobs?", o: ["Jumia", "Jobberman", "Konga", "Facebook"], a: "Jobberman" },
+  { q: "Information literacy 'Standard Five' relates to:", o: ["Reading speed", "Ethical and legal use of information", "Physical fitness", "Buying books"], a: "Ethical and legal use of information" },
+  { q: "The 'Africana' collection is located on which floor of HOL?", o: ["Basement", "Ground Floor", "First Floor", "Second Floor"], a: "First Floor" },
+  { q: "The 'Documents' section is located on which floor of HOL?", o: ["Ground Floor", "First Floor", "Second Floor", "Third Floor"], a: "Second Floor" },
+  { q: "Current newspapers are typically kept in the:", o: ["Circulation desk", "Serial room", "Reference room", "Africana room"], a: "Reference room" },
+  { q: "Which LCC class is for 'Plant Culture'?", o: ["S", "SB", "SD", "SF"], a: "SB" },
+  
+  { q: "Which LCC class is for 'Medicine'?", o: ["Q", "R", "S", "T"], a: "R" },
+  { q: "The LCC class 'D' is reserved for:", o: ["General History", "World History", "History of the Americas", "History of Africa"], a: "World History" },
+  { q: "In the Hezekiah Oluwasanmi Library, Class 'K' (Law) is located in which wing?", o: ["South Wing", "North Wing", "East Wing", "West Wing"], a: "North Wing" },
+  { q: "What does the 'Call Mark' on a book represent?", o: ["The price of the book", "The unique address/location of the book on the shelf", "The author's phone number", "The number of copies available"], a: "The unique address/location of the book on the shelf" },
+  { q: "Which section of the library provides access to 'Theses and Dissertations'?", o: ["Reference Room", "Africana Special Collection", "Circulation Desk", "Serials Room"], a: "Africana Special Collection" },
+  { q: "The 'United Nations' publications are found in which collection?", o: ["Serials", "Documents", "Africana", "General Stacks"], a: "Documents" },
+  { q: "What is the primary function of the 'Serials Room'?", o: ["To lend textbooks", "To provide current and back files of journals/periodicals", "To repair old books", "To sell stationery"], a: "To provide current and back files of journals/periodicals" },
+  { q: "How are newspapers older than October 1985 stored in the HOL?", o: ["Digital PDF", "Microfilm", "Bound volumes in the basement", "They are discarded"], a: "Microfilm" },
+  { q: "Which database is part of the 'Research4Life' program?", o: ["JSTOR", "AGORA", "Facebook", "Google Scholar"], a: "AGORA" },
+  { q: "Accessing the library's OPAC from a hostel requires:", o: ["A physical cable", "Internet connectivity and the library URL", "A library staff password", "A letter of permission"], a: "Internet connectivity and the library URL" },
+  { q: "Information Literacy 'Standard Two' focuses on:", o: ["Using a mouse", "Accessing information effectively and efficiently", "Printing documents", "Returning books on time"], a: "Accessing information effectively and efficiently" },
+  { q: "What is 'CILIP' an acronym for?", o: ["Computer and Internet Literacy International Program", "Chartered Institute of Library and Information Professionals", "Centre for Information Law and Intellectual Property", "Council for International Library Initiatives"], a: "Chartered Institute of Library and Information Professionals" },
+  { q: "Which literacy involves the ability to 'filter' information from search results?", o: ["Visual Literacy", "Digital Literacy", "Basic Literacy", "Oral Literacy"], a: "Digital Literacy" },
+  { q: "A 'Specialized Index' is one that:", o: ["Covers all subjects", "Focuses on a particular discipline or topic", "Lists only book titles", "Is written in code"], a: "Focuses on a particular discipline or topic" },
+  { q: "What is the purpose of an 'Abstracting Service'?", o: ["To sell research papers", "To provide summaries of articles to save time", "To hide the full text", "To translate books"], a: "To provide summaries of articles to save time" },
+  { q: "Which of the following is a 'Question & Answer' search engine?", o: ["Dogpile", "Ask.com", "Google Maps", "Jumia"], a: "Ask.com" },
+  { q: "The 'General Works' class in LCC is represented by the letter:", o: ["A", "B", "C", "D"], a: "A" },
+  { q: "Which LCC class covers 'Geography, Anthropology, and Recreation'?", o: ["F", "G", "H", "I"], a: "G" },
+  { q: "Which class represents 'Philosophy, Psychology, and Religion'?", o: ["A", "B", "C", "P"], a: "B" },
+  { q: "What type of information source is a 'Dictionary'?", o: ["Primary", "Secondary", "Tertiary", "Quaternary"], a: "Tertiary" },
+  { q: "Which reference tool provides 'background information' on a subject?", o: ["Index", "Encyclopedia", "Directory", "Bibliography"], a: "Encyclopedia" },
+  { q: "A 'Report' should be written in which of the following styles?", o: ["Fictional and emotional", "Objective and factual", "Poetic", "Slang"], a: "Objective and factual" },
+  { q: "What follows the 'Methodology' section in a standard technical report?", o: ["Title Page", "Results/Findings", "Abstract", "Introduction"], a: "Results/Findings" },
+  { q: "The 'Executive Summary' is mainly designed for:", o: ["Students only", "People who don't have time to read the full report", "Librarians", "Book publishers"], a: "People who don't have time to read the full report" },
+  { q: "What is 'APA' in the context of citation?", o: ["American Physics Association", "American Psychological Association", "African Publication Agency", "Academic Paper Analysis"], a: "American Psychological Association" },
+  { q: "Which of these is NOT a criterion for evaluating a website?", o: ["Accuracy", "Authority", "Currency", "Background color"], a: "Background color" },
+  { q: "The 'Africana Special Collection' is located on which floor of HOL?", o: ["Ground Floor", "First Floor", "Second Floor", "Third Floor"], a: "First Floor" },
+  { q: "A 'National Bibliography' lists:", o: ["All books in the world", "Books published in or about a specific country", "Only government laws", "Only student names"], a: "Books published in or about a specific country" },
+  { q: "Which tool is best for finding the meaning of technical terms?", o: ["Atlas", "Specialized Dictionary", "Directory", "Yearbook"], a: "Specialized Dictionary" },
+  { q: "The 'Table of Contents' helps a reader to:", o: ["See the author's photo", "Navigate to specific sections using page numbers", "Find the price", "Contact the publisher"], a: "Navigate to specific sections using page numbers" },
+  { q: "What is the pass mark percentage for LIB 001?", o: ["30%", "40%", "50%", "60%"], a: "40%" },
+  { q: "Who is the Vice-Chancellor mentioned in the HOL context?", o: ["The University Librarian", "The Chief Executive of the University", "The Course Coordinator", "The HOD"], a: "The Chief Executive of the University" },
+  { q: "Which LCC letter is for 'Social Sciences'?", o: ["G", "H", "J", "K"], a: "H" },
+  { q: "Which LCC letter is for 'Political Science'?", o: ["H", "J", "K", "L"], a: "J" },
+  { q: "Which LCC letter is for 'Education'?", o: ["L", "M", "N", "P"], a: "L" },
+  { q: "Which LCC letter is for 'Music'?", o: ["L", "M", "N", "P"], a: "M" },
+  { q: "Which LCC letter is for 'Fine Arts'?", o: ["M", "N", "P", "Q"], a: "N" },
+  { q: "Which LCC letter is for 'Science'?", o: ["P", "Q", "R", "S"], a: "Q" },
+  { q: "Which LCC letter is for 'Agriculture'?", o: ["Q", "R", "S", "T"], a: "S" },
+  { q: "Which LCC letter is for 'Technology'?", o: ["S", "T", "U", "V"], a: "T" },
+  { q: "Which LCC letter is for 'Military Science'?", o: ["U", "V", "W", "X"], a: "U" },
+  { q: "Which LCC letter is for 'Naval Science'?", o: ["U", "V", "W", "X"], a: "V" },
+  { q: "Which LCC letter is for 'Bibliography and Library Science'?", o: ["X", "Y", "Z", "A"], a: "Z" },
+  { q: "LCC Class 'C' stands for:", o: ["Chemistry", "Auxiliary Sciences of History", "Calculus", "Canada"], a: "Auxiliary Sciences of History" },
+  { q: "LCC Class 'E-F' stands for:", o: ["English Literature", "History of the Americas", "European History", "Economics"], a: "History of the Americas" },
+  { q: "In the HOL, the 'South Wing' contains books with LCC classes:", o: ["A-J", "K-Z", "Q-Z", "A-Z"], a: "A-J" },
+  { q: "In the HOL, the 'North Wing' contains books with LCC classes:", o: ["A-J", "K-Z", "A-M", "N-Z"], a: "K-Z" },
+  { q: "The library's 'Reserved Book' system is for:", o: ["Books that are lost", "High-demand books with limited borrowing time", "Free books", "Books for staff only"], a: "High-demand books with limited borrowing time" },
+  { q: "What does 'LMS' stand for in Module 15?", o: ["Library Management System", "Learning Management System", "Legal Monitoring Service", "Local Media Station"], a: "Learning Management System" },
+  { q: "The 'Introduction' of a report should include:", o: ["The final budget", "The background and scope of the study", "The full bibliography", "The student's grades"], a: "The background and scope of the study" },
+  { q: "Which of these is a 'Media' search engine?", o: ["Bing", "YouTube", "LinkedIn", "Amazon"], a: "YouTube" },
+  { q: "A 'Biographical Dictionary' contains information about:", o: ["Plants", "People's lives", "Chemicals", "Rocks"], a: "People's lives" },
+  { q: "The 'Index' of a book is usually found at the:", o: ["Beginning", "Middle", "End", "Spine"], a: "End" },
+  { q: "What is 'Boolean Logic' used for in searching?", o: ["Calculating math", "Combining keywords (AND, OR, NOT)", "Designing graphics", "Writing emails"], a: "Combining keywords (AND, OR, NOT)" },
+  { q: "Using 'AND' in a search query usually:", o: ["Broadens results", "Narrows results", "Deletes results", "Changes the language"], a: "Narrows results" },
+  { q: "Using 'OR' in a search query usually:", o: ["Narrows results", "Broadens results", "Has no effect", "Saves the search"], a: "Broadens results" },
+  { q: "A 'Citation' must include which of the following?", o: ["The author's age", "The publication year", "The library's phone number", "The student's address"], a: "The publication year" },
+  { q: "Which of these is a characteristic of a 'Primary Source'?", o: ["It is a summary of an event", "It is an original record of an event", "It is a textbook", "It is an encyclopedia entry"], a: "It is an original record of an event" },
+  { q: "Which database is famous for Law-related resources?", o: ["HINARI", "Legalpedia", "AGORA", "OARE"], a: "Legalpedia" },
+  { q: "The 'Institutional Repository' (IR) primarily hosts:", o: ["Books from the UK", "Research works from the local institution (OAU)", "Movies", "Social media posts"], a: "Research works from the local institution (OAU)" },
+  { q: "In LCC, Class 'Q' is for Science. What is 'QA'?", o: ["Biology", "Mathematics", "Physics", "Chemistry"], a: "Mathematics" },
+  { q: "In LCC, Class 'QC' is for:", o: ["Chemistry", "Physics", "Computers", "Climate"], a: "Physics" },
+  { q: "In LCC, Class 'QD' is for:", o: ["Data", "Chemistry", "Design", "Drama"], a: "Chemistry" },
+  { q: "In LCC, Class 'QL' is for:", o: ["Logic", "Zoology", "Law", "Latin"], a: "Zoology" },
+  { q: "Information Literacy 'Standard Three' states that a student should:", o: ["Sleep in the library", "Evaluate information and its sources critically", "Buy the latest laptop", "Memorize the dictionary"], a: "Evaluate information and its sources critically" },
+  { q: "A 'Gazetteer' is essentially a:", o: ["Dictionary of dates", "Dictionary of places (Geographical)", "Dictionary of names", "Dictionary of synonyms"], a: "Dictionary of places (Geographical)" },
+  { q: "What is an 'Appendix' used for in a report?", o: ["To list references", "To include detailed data, charts, or samples", "To state the title", "To introduce the topic"], a: "To include detailed data, charts, or samples" },
+  { q: "Which citation style is commonly used in Literature and Humanities?", o: ["APA", "MLA", "IEEE", "Vancouver"], a: "MLA" },
+  { q: "What does 'URL' stand for?", o: ["Uniform Resource Locator", "Universal Radio Link", "United Research List", "User Reference Link"], a: "Uniform Resource Locator" },
+  { q: "Which search engine is owned by Microsoft?", o: ["Google", "Bing", "Yahoo", "Baidu"], a: "Bing" },
+  { q: "The 'Reference Room' materials are usually:", o: ["Available for 2-week loan", "For use within the library only", "Free to take home", "Only for lecturers"], a: "For use within the library only" },
+  { q: "What does 'Vol.' stand for in a citation?", o: ["Value", "Volume", "Vocabulary", "Voltage"], a: "Volume" },
+  { q: "The 'Abstract' of a report should be:", o: ["10 pages long", "A concise summary (approx 150-300 words)", "The same as the introduction", "A list of definitions"], a: "A concise summary (approx 150-300 words)" },
+  { q: "Which of the following is a 'Secondary Source'?", o: ["A diary", "An original photograph", "A textbook", "A raw experiment result"], a: "A textbook" },
+  { q: "In a bibliography, the 'Place of Publication' refers to:", o: ["The library address", "The city where the book was published", "The author's hometown", "The student's school"], a: "The city where the book was published" },
+  { q: "What is the LCC code for 'Library Science'?", o: ["L", "Z", "LB", "LA"], a: "Z" },
+  { q: "Which section of the library would you visit to find current 'Time' or 'Newsweek' magazines?", o: ["Circulation", "Reference", "Serials", "Documents"], a: "Serials" },
+  { q: "What is a 'Meta-Search Engine' example?", o: ["MetaCrawler", "Google Scholar", "LexisNexis", "Ebscohost"], a: "MetaCrawler" },
+  { q: "Which LCC class is for 'Literature'?", o: ["M", "N", "P", "Q"], a: "P" },
+  { q: "Information Literacy 'Standard Four' involves:", o: ["Using information to accomplish a specific purpose", "Paying for information", "Hiding information", "Reading information slowly"], a: "Using information to accomplish a specific purpose" },
+  { q: "A 'Periodical' is a publication that:", o: ["Is published only once", "Is published at regular intervals (daily, weekly, monthly)", "Has no author", "Is only digital"], a: "Is published at regular intervals (daily, weekly, monthly)" },
+  { q: "What is the purpose of 'Library Instruction'?", o: ["To make librarians famous", "To empower users to find and use information effectively", "To clean the library", "To count the number of books"], a: "To empower users to find and use information effectively" },
+  { q: "The 'Call Number' is found on which part of a library book?", o: ["The Title Page", "The Spine", "The Back Cover", "The Table of Contents"], a: "The Spine" },
+  { q: "Which search engine is best for finding academic papers?", o: ["Google Scholar", "TikTok", "eBay", "Pinterest"], a: "Google Scholar" },
+  { q: "What is 'Peer Review'?", o: ["Evaluation of work by experts in the same field", "A friend checking your homework", "A spell-checker", "A library fine"], a: "Evaluation of work by experts in the same field" },
+  { q: "The 'Literature Review' in a report aims to:", o: ["Summarize existing research on the topic", "Write a poem", "List the author's hobbies", "Check for spelling errors"], a: "Summarize existing research on the topic" },
+  { q: "Which LCC class covers 'General Works'?", o: ["A", "B", "C", "D"], a: "A" },
+  { q: "The 'Hezekiah Oluwasanmi Library' is a:", o: ["Public Library", "Academic/University Library", "School Library", "National Library"], a: "Academic/University Library" },
+  { q: "What is 'Plagiarism'?", o: ["Properly citing sources", "Passing off someone else's work as your own", "Reading many books", "Writing a summary"], a: "Passing off someone else's work as your own" },
+  { q: "Which database focuses on 'Environment'?", o: ["HINARI", "OARE", "AGORA", "JSTOR"], a: "OARE" },
+  { q: "A 'Bibliography' is usually arranged:", o: ["By date", "By color", "Alphabetically by author's surname", "By price"], a: "Alphabetically by author's surname" },
+  { q: "What does 'ed.' stand for in a citation?", o: ["Education", "Edition or Editor", "Editorial", "Ending"], a: "Edition or Editor" },
+  { q: "The 'Reference Desk' is where you go to:", o: ["Borrow a novel", "Get help with research or finding specific information", "Pay for food", "Sleep"], a: "Get help with research or finding specific information" },
+  { q: "What is 'Information Overflow'?", o: ["Having too little information", "Being overwhelmed by too much information", "A leaky library roof", "A computer virus"], a: "Being overwhelmed by too much information" },
+  { q: "Which LCC class is for 'Medicine'?", o: ["P", "Q", "R", "S"], a: "R" },
+  { q: "Which LCC class is for 'Technology'?", o: ["R", "S", "T", "U"], a: "T" },
+  { q: "The 'Conclusion' of a report should:", o: ["Introduce new data", "Summarize the main points and findings", "List the bibliography", "Be the longest section"], a: "Summarize the main points and findings" },
+  { q: "What is 'Intellectual Property'?", o: ["A house owned by a smart person", "Legal rights resulting from intellectual activity", "A library building", "A computer monitor"], a: "Legal rights resulting from intellectual activity" },
+  { q: "Which search engine is a 'Business' search engine?", o: ["Dice", "Hoovers", "Ask", "Bing"], a: "Hoovers" },
+  { q: "The term 'Database' refers to:", o: ["A physical bookshelf", "An organized collection of structured data/information", "A type of paper", "A library gate"], a: "An organized collection of structured data/information" }
+
+] 
+      
+
+      let questions = [];
+      let current = 0;
+      let answers = [];
+      let timeLeft = 0;
+      let isReviewMode = false;
+      let timerInt;
+
+      document.getElementById("poolSize").innerText = QUESTION_POOL.length;
+
+      /* --- FUNCTIONS --- */
+      function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+      }
+
+      function startExam() {
+        let qty = parseInt(document.getElementById("userQty").value);
+        let mins = parseInt(document.getElementById("userTime").value);
+
+        // Hard Validation Logic
+        if (isNaN(qty) || qty < 1) qty = 1;
+        if (qty > MAX_QS) qty = MAX_QS;
+        if (qty > QUESTION_POOL.length) qty = QUESTION_POOL.length;
+
+        if (isNaN(mins) || mins < 1) mins = 1;
+        if (mins > MAX_TIME) mins = MAX_TIME;
+
+        // Apply limits back to UI for transparency
+        document.getElementById("userQty").value = qty;
+        document.getElementById("userTime").value = mins;
+
+        // Initialize
+        questions = shuffle([...QUESTION_POOL]).slice(0, qty);
+        timeLeft = mins * 60;
+        answers = new Array(qty).fill(null);
+        current = 0;
+        isReviewMode = false;
+
+        document.getElementById("setupScreen").style.display = "none";
+        document.getElementById("examArea").style.display = "block";
+
+        createPalette(qty);
+        loadQuestion();
+        startTimer();
+      }
+
+      function startTimer() {
+        clearInterval(timerInt);
+        timerInt = setInterval(() => {
+          if (isReviewMode) return;
+          timeLeft--;
+          const m = Math.floor(timeLeft / 60);
+          const s = timeLeft % 60;
+          document.getElementById("timer").innerText =
+            `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+          if (timeLeft <= 0) {
+            clearInterval(timerInt);
+            submitExam(true); // Auto-submit when time is up
+          }
+        }, 1000);
+      }
+
+      function createPalette(qty) {
+        const p = document.getElementById("palette");
+        p.innerHTML = "";
+        for (let i = 0; i < qty; i++) {
+          const btn = document.createElement("button");
+          btn.innerText = i + 1;
+          btn.onclick = () => {
+            current = i;
+            loadQuestion();
+          };
+          p.appendChild(btn);
+        }
+      }
+
+      function loadQuestion() {
+        const q = questions[current];
+        let html = `<div class="question"><h3>Q${current + 1}. ${q.q}</h3>`;
+
+        q.o.forEach((opt) => {
+          let cls = "option";
+          if (isReviewMode) {
+            if (opt === q.a) cls += " correct";
+            else if (answers[current] === opt) cls += " wrong";
+          } else {
+            if (answers[current] === opt) cls += " selected";
+          }
+          const action = isReviewMode
+            ? ""
+            : `onclick="selectAnswer('${opt.replace(/'/g, "\\'")}')"`;
+          html += `<div class="${cls}" ${action}>${opt}</div>`;
+        });
+
+        document.getElementById("questionBox").innerHTML = html;
+        updatePalette();
+      }
+
+      function selectAnswer(opt) {
+        answers[current] = opt;
+        loadQuestion();
+      }
+
+      function nextQ() {
+        if (current < questions.length - 1) {
+          current++;
+          loadQuestion();
+        }
+      }
+      function prevQ() {
+        if (current > 0) {
+          current--;
+          loadQuestion();
+        }
+      }
+
+      function updatePalette() {
+        const btns = document.querySelectorAll(".palette button");
+        btns.forEach((b, i) => {
+          b.classList.remove("current", "palette-correct", "palette-wrong");
+          if (isReviewMode) {
+            if (answers[i] === questions[i].a)
+              b.classList.add("palette-correct");
+            else b.classList.add("palette-wrong");
+          }
+          if (i === current) b.classList.add("current");
+        });
+      }
+
+      function submitExam(force = false) {
+        if (!force && !confirm("Submit your exam?")) return;
+
+        isReviewMode = true;
+        clearInterval(timerInt);
+
+        let score = 0;
+        questions.forEach((q, i) => {
+          if (answers[i] === q.a) score++;
+        });
+
+        document.getElementById("timer").style.display = "none";
+        document.getElementById("submitBtn").style.display = "none";
+        document.getElementById("resultBanner").style.display = "block";
+        document.getElementById("scoreDisplay").innerText =
+          `Final Score: ${score} / ${questions.length}`;
+        document.getElementById("percentDisplay").innerText =
+          `${((score / questions.length) * 100).toFixed(1)}%`;
+
+        current = 0;
+        loadQuestion();
+      }
+    </script>
+  </body>
+</html>
